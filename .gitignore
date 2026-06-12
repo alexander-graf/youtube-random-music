@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+ENV/
+env/
+
+# App local storage
+playlists.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Local German documentation files
+AUR_ANLEITUNG.md
+SICHERHEITS_GUIDE.md
