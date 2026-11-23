@@ -26,24 +26,29 @@ An elegant PyQt6 desktop application designed to discover and play YouTube music
 5. **Web Browser Integration:**
    - Open the currently playing track in your default web browser (like Google Chrome) with a single click to like, comment, or save it to a playlist.
 
+## Since v1.1
+
+- German UI; filters apply instantly; the results panel shows why tracks were hidden.
+- "Not music" filter: titles with words like *review*, *documentary*, *tutorial* are hidden
+  (editable under "Begriffe & Ausschlüsse").
+- Listening history persists across restarts (tab "Verlauf"); already heard tracks can be hidden.
+- Own genres/words for the random search, stored in `~/.local/share/youtube-random-music/`.
+- MPRIS: media keys, `playerctl` and Waybar control the player.
+
 ## Usage
 
-First, ensure you have Python 3, `mpv`, and `yt-dlp` installed.
+System requirements: Python 3, `mpv`, and a JavaScript runtime for yt-dlp (`deno` or `node`).
+PyQt6, requests and yt-dlp live in a local `venv/`.
 
-1. **Install Dependencies:**
-   Ensure the virtual environment is set up and required packages (`PyQt6`, `requests`, `yt-dlp`) are installed.
-   
-2. **Launch the Application:**
-   Run the start script in the project directory:
-   ```bash
-   ./run.sh
-   ```
-
-3. **Install Desktop Launcher:**
-   To add the application to your system application menu, run:
+1. **Install (also the yt-dlp update):**
    ```bash
    ./install_desktop.sh
    ```
+   Creates `venv/` if missing, installs/upgrades `requirements.txt`, and adds
+   "YouTube Random Music Dashboard" to the application menu. Re-run it when
+   YouTube playback breaks — usually yt-dlp just needs an update.
+
+2. **Launch:** from the application menu, or `./run.sh`.
 
 ## File Structure
 

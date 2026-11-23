@@ -2,19 +2,45 @@ import socket
 import json
 import subprocess
 import os
-import time
+import shutil
+import sys
+
+
+def find_ytdlp():
+    """yt-dlp aus dem venv bevorzugen (aktueller als ein Systempaket), sonst PATH."""
+    venv_exe = os.path.join(os.path.dirname(sys.executable), "yt-dlp")
+    if os.path.exists(venv_exe):
+        return venv_exe
+    return shutil.which("yt-dlp") or "yt-dlp"
+
+
+def find_js_runtime():
+    """yt-dlp braucht für YouTube eine JS-Laufzeit; ohne sie fehlen oft Formate."""
+    for name in ("deno", "node", "bun"):
+        if shutil.which(name):
+            return name
+    return None
+
+
+def default_socket_path():
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    return os.path.join(runtime_dir, f"yt_zufall_mpv_{os.getuid()}.sock")
+
 
 class MpvPlayer:
-    def __init__(self, ipc_socket_path="/tmp/yt_zufall_mpv.sock"):
-        self.ipc_socket_path = ipc_socket_path
+    def __init__(self, ipc_socket_path=None):
+        self.ipc_socket_path = ipc_socket_path or default_socket_path()
+        self.volume = 80
         self.process = None
         self.current_song = None
         
-    def start(self, url, song_metadata=None):
+    def start(self, url, song_metadata=None, volume=None):
         """Starts mpv playing the given URL."""
         self.stop()
         self.current_song = song_metadata
-        
+        if volume is not None:
+            self.volume = int(volume)
+
         # Remove socket if it already exists
         if os.path.exists(self.ipc_socket_path):
             try:
@@ -27,17 +53,19 @@ class MpvPlayer:
         cmd = [
             "mpv",
             "--no-video",
+            "--no-terminal",
             f"--input-ipc-server={self.ipc_socket_path}",
+            f"--volume={self.volume}",
             "--cache=yes",
-            url
+            f"--script-opts=ytdl_hook-ytdl_path={find_ytdlp()}",
         ]
+        js_runtime = find_js_runtime()
+        if js_runtime:
+            cmd.append(f"--ytdl-raw-options-append=js-runtimes={js_runtime}")
+        cmd.append(url)
+        # Kein Warten auf den Socket mehr: die Lautstärke geht per Kommandozeile
+        # mit, und die Statusabfrage verträgt einen noch fehlenden Socket.
         self.process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # Wait for socket to be created
-        for _ in range(50):
-            if os.path.exists(self.ipc_socket_path):
-                break
-            time.sleep(0.1)
             
     def _send_command(self, cmd_list):
         """Sends a JSON-IPC command to mpv and returns the response dictionary."""
@@ -86,6 +114,7 @@ class MpvPlayer:
         return self._send_command(["cycle", "pause"])
 
     def set_volume(self, value):
+        self.volume = int(value)
         return self._send_command(["set_property", "volume", int(value)])
 
     def get_position(self):
@@ -109,8 +138,8 @@ class MpvPlayer:
         
         return float(pos_val), float(dur_val), bool(paused_val)
 
-    def seek(self, seconds):
-        return self._send_command(["seek", seconds, "absolute"])
+    def seek(self, seconds, mode="absolute"):
+        return self._send_command(["seek", seconds, mode])
 
     def stop(self):
         self.current_song = None
